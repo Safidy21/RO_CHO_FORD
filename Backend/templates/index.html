@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recherche Opérationnelle</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.19.0/cytoscape.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-node-html-label@1.1.1/cytoscape-node-html-label.min.js"></script>
+</head>
+<body>
+    <div>
+        <h2>CHO_FORD</h2>
+        <button onclick="undo()">Annuler</button>
+        <button onclick="supprimerElement()">Supprimer un élément</button>
+        <div id="graph" style="height: 600px; border: 1px solid #ccc;"></div>
+        <button onclick="calculerCheminMax()">Maximiser</button>
+        <button onclick="calculerCheminMin()">Minimiser</button>
+        <button onclick="resetGraphHighlight()">Réinitialiser le graphe</button>
+        <button onclick="resetGraph()">Supprimer le graphe</button>
+        <table id="ford-table" border="1" style="margin-top: 20px; display: none;">
+            <thead>
+                <tr>
+                    <th>i</th>
+                    <th>j</th>
+                    <th>λj - λi</th>
+                    <th>v(xi, xj)</th>
+                    <th>λj</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        let cy = cytoscape({
+            container: document.getElementById('graph'),
+            elements: [],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'background-color': '#000'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#000',
+                        'label': 'data(weight)',
+                        'color': "#000",
+                        'font-size': 10,
+                        'text-rotation': 'autorotate',
+                        'text-margin-y': -15,
+                        'text-background-color': '#fff',
+                        'text-background-opacity': 0.7,
+                        'text-border-color': '#000',
+                        'text-border-width': 1,
+                        'arrow-scale': 1.5,
+                        'arrow-shape': 'triangle-rectangle',
+                        'target-arrow-color': '#000',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier'
+                    }
+                }
+            ],
+            layout: {
+                name: 'grid',
+                rows: 1
+            }
+        });
+
+        let selectedNode = null;
+        let edges = [];
+        let historyStack = [];
+
+        function saveState() {
+            let currentState = cy.json();
+            historyStack.push(currentState);
+        }
+
+        function resetPathHighlight() {
+            cy.nodes().forEach(node => {
+                node.style('background-color', '#000'); // default
+            });
+            cy.edges().forEach(edge => {
+                edge.style({
+                    'line-color': '#000',           // black
+                    'target-arrow-color': '#000',   // black arrow
+                    'line-style': 'solid',          // reset dashed to solid
+                    'opacity': 1                    // full opacity
+                });
+            });
+        }
+
+        // Function to clear previous highlights of removed edges
+        function clearRemovedEdgeHighlight() {
+            cy.edges().forEach(edge => {
+                edge.style({
+                    'line-style': 'solid',
+                    'line-color': '#000',
+                    'target-arrow-color': '#000',
+                    'opacity': 1
+                });
+            });
+        }
+
+        // Add nodes on background tap
+        cy.on('tap', function(event) {
+            if (event.target === cy) {
+                let nodeName = prompt("Entrez le nom du nœud:");
+                if (nodeName) {
+                    saveState();
+                    cy.add({ group: 'nodes', data: { id: nodeName, label: nodeName } }); // Initialize label
+                    cy.layout({ name: 'grid' }).run();
+                }
+            }
+        });
+
+        // Add an edge on node tap sequences
+        cy.on('tap', 'node', function(evt) {
+            let nodeName = evt.target.id();
+            if (!selectedNode) {
+                selectedNode = nodeName;
+            } else {
+                let weight = prompt("Entrez le poids de l'arête:");
+                if (weight) {
+                    saveState();
+                    cy.add({ group: 'edges', data: { source: selectedNode, target: nodeName, weight: parseInt(weight) } });
+                    edges.push({ source: selectedNode, target: nodeName, weight: parseInt(weight) });
+                    selectedNode = null;
+                }
+            }
+        });
+
+        // Modify edge weight or invert direction on edge tap
+        cy.on('tap', 'edge', function(evt) {
+            let edge = evt.target;
+            let action = prompt("Que voulez-vous faire ? Tapez '1' pour modifier le poids ou '2' pour inverser la direction.");
+
+            if (action === '1') {
+                let currentWeight = edge.data('weight');
+                let newWeight = prompt("Modifiez le poids de l'arête:", currentWeight);
+
+                if (newWeight && !isNaN(newWeight)) {
+                    saveState();
+                    newWeight = parseInt(newWeight);
+                    edge.data('weight', newWeight);
+                    let edgeIndex = edges.findIndex(e => e.source === edge.source().id() && e.target === edge.target().id());
+                    if (edgeIndex !== -1) {
+                        edges[edgeIndex].weight = newWeight;
+                    }
+                }
+            } else if (action === '2') {
+                let sourceNode = edge.source();
+                let targetNode = edge.target();
+
+                cy.add({
+                    group: 'edges',
+                    data: {
+                        source: targetNode.id(),
+                        target: sourceNode.id(),
+                        weight: edge.data('weight')
+                    }
+                });
+
+                edge.remove();
+
+                let edgeIndex = edges.findIndex(e => e.source === edge.source().id() && e.target === edge.target().id());
+                if (edgeIndex !== -1) {
+                    edges.splice(edgeIndex, 1);
+                }
+
+                edges.push({ source: targetNode.id(), target: sourceNode.id(), weight: edge.data('weight') });
+
+                saveState();
+            }
+        });
+
+        function calculerCheminMin() {
+            resetPathHighlight();
+            let source = prompt("Entrez la source:");
+            let target = prompt("Entrez la cible:");
+
+            $.ajax({
+                url: '/calculer_chemin_min',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    nodes: cy.nodes().map(node => node.id()),
+                    edges: edges,
+                    source: source,
+                    target: target
+                }),
+                success: function(response) {
+                    if (response.error) {
+                        alert(response.error);
+                        return;
+                    }
+                    // Colorer le chemin optimal
+                    if (Array.isArray(response.chemin) && response.chemin.length > 1) {
+                        for (let i = 0; i < response.chemin.length; i++) {
+                            let nodeId = response.chemin[i];
+                            let node = cy.getElementById(nodeId);
+                            node.style('background-color', '#FF6347');
+
+                            if (i < response.chemin.length - 1) {
+                                let nextNodeId = response.chemin[i + 1];
+                                let edge = cy.edges().filter(e => e.source().id() === nodeId && e.target().id() === nextNodeId);
+                                if (edge) {
+                                    edge.style('line-color', '#FF6347');
+                                    edge.style('target-arrow-color', '#FF6347');
+                                }
+                            }
+                        }
+                        alert("Chemin optimal min mis à jour !");
+                    }
+
+                    // Update node labels with λ values
+                    if (response.nodes_with_lambda) {
+                        Object.entries(response.nodes_with_lambda).forEach(([nodeId, lambdaValue]) => {
+                            let node = cy.getElementById(nodeId);
+                            // Explicitly set label to include the λ value
+                            if (nodeId === response.chemin[0]) {
+                                // For first node, always display λ=0
+                                node.data('label', nodeId + ' (λ=0)');
+                            } else if (lambdaValue === null || lambdaValue === -Infinity) {
+                                node.data('label', nodeId + ' (λ=∞)');
+                            } else {
+                                node.data('label', nodeId + ' (λ=' + Math.round(lambdaValue) + ')');
+                            }
+                        });
+                    }
+                    
+                    // Populate steps table
+                    let tableBody = document.querySelector("#ford-table tbody");
+                    tableBody.innerHTML = "";
+                    response.steps.forEach(step => {
+                        let row = `<tr>
+                            <td>${step.i}</td>
+                            <td>${step.j}</td>
+                            <td>${step["λj - λi"]}</td>
+                            <td>${step["v(xi, xj)"]}</td>
+                            <td>${step["λj"]}</td>
+                        </tr>`;
+                        tableBody.innerHTML += row;
+                    });
+                    document.getElementById("ford-table").style.display = "block";
+                },
+                error: function() {
+                    alert("Erreur lors du calcul du chemin.");
+                }
+            });
+        }
+
+        function calculerCheminMax() {
+            resetPathHighlight();
+            clearRemovedEdgeHighlight(); // Clear previous removed edge highlights
+            let source = prompt("Entrez la source:");
+            let target = prompt("Entrez la cible:");
+
+            $.ajax({
+                url: '/calculer_chemin_max',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    nodes: cy.nodes().map(node => node.id()),
+                    edges: edges,
+                    source: source,
+                    target: target
+                }),
+                success: function(response) {
+                    if (response.error) {
+                        alert(response.error);
+                        return;
+                    }
+                    // Colorer le chemin optimal
+                    if (Array.isArray(response.chemin) && response.chemin.length > 1) {
+                        for (let i = 0; i < response.chemin.length; i++) {
+                            let nodeId = response.chemin[i];
+                            let node = cy.getElementById(nodeId);
+                            node.style('background-color', '#FF6347');
+
+                            if (i < response.chemin.length - 1) {
+                                let nextNodeId = response.chemin[i + 1];
+                                let edge = cy.edges().filter(e => e.source().id() === nodeId && e.target().id() === nextNodeId);
+                                if (edge) {
+                                    edge.style('line-color', '#FF6347');
+                                    edge.style('target-arrow-color', '#FF6347');
+                                }
+                            }
+                        }
+                        alert("Chemin optimal max mis à jour !");
+                    }
+
+                    // Highlight the removed edges (cycles)
+                    if (response.removed_edges && response.removed_edges.length > 0) {
+                        response.removed_edges.forEach(e => {
+                            let removedEdge = cy.edges().filter(edge =>
+                                edge.source().id() === e.source && edge.target().id() === e.target);
+                            if (removedEdge.length > 0) {
+                                removedEdge.style({
+                                    'line-style': 'dashed',
+                                    'line-color': '#d62728',
+                                    'target-arrow-color': '#d62728',
+                                    'opacity': 0.7
+                                });
+                            }
+                        });
+                        alert(response.warning || "Des cycles ont été détectés et des arcs ont été supprimés.");
+                    }
+
+                    // Update node labels with λ values
+                    if (response.nodes_with_lambda) {
+                        Object.entries(response.nodes_with_lambda).forEach(([nodeId, lambdaValue]) => {
+                            let node = cy.getElementById(nodeId);
+                            // Explicitly set label to include the λ value
+                            if (nodeId === response.chemin[0]) {
+                                // For first node, always display λ=0
+                                node.data('label', nodeId + ' (λ=0)');
+                            } else if (lambdaValue === null || lambdaValue === -Infinity) {
+                                node.data('label', nodeId + ' (λ=∞)');
+                            } else {
+                                node.data('label', nodeId + ' (λ=' + Math.round(lambdaValue) + ')');
+                            }
+                        });
+                    }
+
+
+                    // Populate steps table
+                    let tableBody = document.querySelector("#ford-table tbody");
+                    tableBody.innerHTML = "";
+                    response.steps.forEach(step => {
+                        let row = `<tr>
+                            <td>${step.i}</td>
+                            <td>${step.j}</td>
+                            <td>${step["λj - λi"]}</td>
+                            <td>${step["v(xi, xj)"]}</td>
+                            <td>${step["λj"]}</td>
+                        </tr>`;
+                        tableBody.innerHTML += row;
+                    });
+                    document.getElementById("ford-table").style.display = "block";
+                },
+                error: function() {
+                    alert("Erreur lors du calcul du chemin.");
+                }
+            });
+        }
+
+        function resetGraph() {
+            if (confirm("Voulez-vous vraiment supprimer le graphe ?")) {
+                saveState();
+                cy.elements().remove();
+                edges = [];
+                document.querySelector("#ford-table tbody").innerHTML = "";
+                document.getElementById("ford-table").style.display = "none";
+            }
+        }
+
+        function resetGraphHighlight() {
+            resetPathHighlight();
+            document.querySelector("#ford-table tbody").innerHTML = "";
+            document.getElementById("ford-table").style.display = "none";
+
+            // Réinitialiser les labels des nœuds
+            cy.nodes().forEach(node => {
+                node.data('label', node.id()); // Remettre le label à son id
+            });
+        }
+
+        function undo() {
+            if (historyStack.length > 0) {
+                let lastState = historyStack.pop();
+                cy.json(lastState);
+            } else {
+                alert("Aucune action à annuler !");
+            }
+        }
+
+        function supprimerElement() {
+            let elementId = prompt("Entrez l'ID du nœud ou l'ID de l'arête à supprimer (format: source-target pour les arêtes) :");
+            
+            if (elementId) {
+                // Vérifier si c'est une arête ou un nœud
+                let parts = elementId.split('-');
+                if (parts.length === 1) {
+                    // Suppression d'un nœud
+                    let node = cy.getElementById(elementId);
+                    if (node.length > 0) {
+                        saveState();
+                        node.remove();
+                        alert("Nœud supprimé !");
+                    } else {
+                        alert("Nœud non trouvé !");
+                    }
+                } else if (parts.length === 2) {
+                    // Suppression d'une arête
+                    let source = parts[0];
+                    let target = parts[1];
+                    let edge = cy.edges().filter(e => e.source().id() === source && e.target().id() === target);
+                    if (edge.length > 0) {
+                        saveState();
+                        edge.remove();
+                        alert("Arête supprimée !");
+                    } else {
+                        alert("Arête non trouvée !");
+                    }
+                } else {
+                    alert("Format d'ID invalide. Utilisez 'nodeId' pour un nœud ou 'source-target' pour une arête.");
+                }
+            }
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (event.ctrlKey && event.key === "z") {
+                undo();
+            }
+        });
+    </script>
+</body>
+</html>
