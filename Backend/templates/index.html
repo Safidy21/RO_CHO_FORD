@@ -3,22 +3,37 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Recherche Opérationnelle</title>
+    <title>CHO_FORD</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Chewy&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fineday+One&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.19.0/cytoscape.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-node-html-label@1.1.1/cytoscape-node-html-label.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
 </head>
 <body>
     <div>
-        <h2>CHO_FORD</h2>
-        <button onclick="undo()">Annuler</button>
-        <button onclick="supprimerElement()">Supprimer un élément</button>
+        
+        <h1>CHEMIN DE VALEUR OPTIMAL</h1>
+        <h1>- ALGORITHME DE FORD -</h1>
+
+        <div class="btn_haut">
+            <button onclick="undo()"><i class="fa-solid fa-rotate-left"></i> Annuler</button>
+            <button onclick="supprimerElement()"><i class="fa-solid fa-trash"></i> Supprimer un élément</button>
+            <button onclick="resetGraphHighlight()"><i class="fa-solid fa-arrows-rotate"></i> Réinitialiser le graphe</button>
+            <button onclick="resetGraph()"><i class="fa-solid fa-trash-can"></i> Supprimer le graphe</button>
+        </div>
+
         <div id="graph" style="height: 600px; border: 1px solid #ccc;"></div>
-        <button onclick="calculerCheminMax()">Maximiser</button>
-        <button onclick="calculerCheminMin()">Minimiser</button>
-        <button onclick="resetGraphHighlight()">Réinitialiser le graphe</button>
-        <button onclick="resetGraph()">Supprimer le graphe</button>
-        <table id="ford-table" border="1" style="margin-top: 20px; display: none;">
+        
+        <div class="btn_bas">
+        <button class="btn_max" onclick="calculerCheminMax()"><i class="fa-solid fa-arrow-up"></i> MAXIMISATION</button>
+        <button class="btn_min" onclick="calculerCheminMin()"><i class="fa-solid fa-arrow-down"></i> MINIMISATION</button>
+        </div>
+
+        <table id="ford-table" border="1" >
             <thead>
                 <tr>
                     <th>i</th>
@@ -66,6 +81,7 @@
                     }
                 }
             ],
+            userZoomingEnabled: false,
             layout: {
                 name: 'grid',
                 rows: 1
@@ -204,14 +220,14 @@
                         for (let i = 0; i < response.chemin.length; i++) {
                             let nodeId = response.chemin[i];
                             let node = cy.getElementById(nodeId);
-                            node.style('background-color', '#FF6347');
+                            node.style('background-color', '#A94A4A');
 
                             if (i < response.chemin.length - 1) {
                                 let nextNodeId = response.chemin[i + 1];
                                 let edge = cy.edges().filter(e => e.source().id() === nodeId && e.target().id() === nextNodeId);
                                 if (edge) {
-                                    edge.style('line-color', '#FF6347');
-                                    edge.style('target-arrow-color', '#FF6347');
+                                    edge.style('line-color', '#A94A4A');
+                                    edge.style('target-arrow-color', '#A94A4A');
                                 }
                             }
                         }
@@ -247,7 +263,7 @@
                         </tr>`;
                         tableBody.innerHTML += row;
                     });
-                    document.getElementById("ford-table").style.display = "block";
+                    document.getElementById("ford-table").style.display = "table";
                 },
                 error: function() {
                     alert("Erreur lors du calcul du chemin.");
@@ -281,14 +297,14 @@
                         for (let i = 0; i < response.chemin.length; i++) {
                             let nodeId = response.chemin[i];
                             let node = cy.getElementById(nodeId);
-                            node.style('background-color', '#FF6347');
+                            node.style('background-color', '#A94A4A');
 
                             if (i < response.chemin.length - 1) {
                                 let nextNodeId = response.chemin[i + 1];
                                 let edge = cy.edges().filter(e => e.source().id() === nodeId && e.target().id() === nextNodeId);
                                 if (edge) {
-                                    edge.style('line-color', '#FF6347');
-                                    edge.style('target-arrow-color', '#FF6347');
+                                    edge.style('line-color', '#A94A4A');
+                                    edge.style('target-arrow-color', '#A94A4A');
                                 }
                             }
                         }
@@ -305,7 +321,7 @@
                                     'line-style': 'dashed',
                                     'line-color': '#d62728',
                                     'target-arrow-color': '#d62728',
-                                    'opacity': 0.7
+                                    'opacity': 0.5
                                 });
                             }
                         });
@@ -342,7 +358,7 @@
                         </tr>`;
                         tableBody.innerHTML += row;
                     });
-                    document.getElementById("ford-table").style.display = "block";
+                    document.getElementById("ford-table").style.display = "table";
                 },
                 error: function() {
                     alert("Erreur lors du calcul du chemin.");

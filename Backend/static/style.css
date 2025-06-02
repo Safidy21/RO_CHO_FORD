@@ -1,0 +1,91 @@
+body {
+    margin: 0.5cm 3cm 1.5cm 3cm;
+    background-color: #FFF6DA;
+}
+
+/* Centrage des titres */
+h1, h2 {
+    text-align: center;
+    margin: 0;
+    padding: 0.4em;
+    font-family: 'Chewy', cursive;
+    letter-spacing: 6px;
+    color: #A94A4A;
+}
+
+button {
+    font-family: 'Fineday One', cursive;
+    font-size: 15px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 12px;
+    background-color: #F4D793;
+}
+
+button i {
+    margin-right: 8px;
+    font-size: 18px;      /* ajuste la taille */
+    vertical-align: middle;
+    color: #000;
+}
+
+/* Style général pour les boutons du haut */
+.btn_haut {
+    margin-top: 50px;
+    margin-bottom: 20px;
+}
+
+/* Les boutons eux-mêmes */
+.btn_haut button {
+    margin-right: 10px;
+    padding: 8px 12px;
+}
+
+/* Le conteneur du graphe */
+#graph {
+    border: 1px solid #ccc;
+    height: 500px;
+    margin-bottom: 20px;  /* Espace entre le graphe et les boutons du bas */
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #B3D8A8;
+}
+
+/* Boutons du bas */
+.btn_bas {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;  /* Aligne les boutons à droite */
+    gap: 10px;                  /* Espacement entre les boutons */
+    margin-top: 20px;
+}
+
+/* Boutons Maximisation / Minimisation */
+.btn_bas button {
+    margin-right: 10px;
+    padding: 8px 12px;
+}
+
+/* Tableau de résultats (si tu as un tableau en bas) */
+
+#ford-table {
+    display: none;
+    width: 100%;
+    border-collapse: separate;
+    table-layout: fixed;
+    margin-top: 30px;
+    border-radius: 12px;
+    border-spacing: 0;
+    overflow: hidden;
+}
+
+#ford-table th, #ford-table td {
+    border: 1px solid #A94A4A;
+    padding: 8px;
+    text-align: center;
+}
+
+#ford-table th {
+    background-color: #A94A4A;
+}
