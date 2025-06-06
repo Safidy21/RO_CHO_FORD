@@ -34,4 +34,4 @@ def calculer_chemin_max():
     return jsonify(chemin)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)  # Exemple : vous pouvez spécifier le port ici
+    app.run(host="0.0.0.0", debug=True, port=8000)  # Exemple : vous pouvez spécifier le port ici
